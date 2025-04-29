@@ -60,7 +60,6 @@ class WeatherData:
                 "description": fav.description,
                 "wind_speed": fav.wind_speed_mps,
                 "cloudiness": fav.cloud_cover_percent,
-                "pressure": fav.pressure_hpa,
                 "last_updated": fav.last_updated.isoformat()
             }
             for fav in favorites
