@@ -1,24 +1,16 @@
 import logging
 import os
 import time
-from typing import List
+from typing import List, Dict
 
 from weather.models.weatherlocation_model import FavoriteLocation
 from weather.utils.api_utils import getweather
 from weather.utils.logger import configure_logger
-from weather.utils import db
+from weather import db
 
 logger = logging.getLogger(__name__)
 configure_logger(logger)
 
-
-import logging
-from typing import List, Dict
-from weather.utils.api_utils import getweather
-from weather.utils.logger import configure_logger
-
-logger = logging.getLogger(__name__)
-configure_logger(logger)
 
 class WeatherData:
     """Database-backed model to manage current weather locations."""

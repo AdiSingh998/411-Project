@@ -1,6 +1,6 @@
 import pytest
 
-from playlist.models.user_model import Users
+from weather.models.user_model import Users
 
 
 @pytest.fixture

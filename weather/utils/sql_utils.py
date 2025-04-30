@@ -3,7 +3,7 @@ import logging
 import os
 import sqlite3
 
-from playlist.utils.logger import configure_logger
+from weather.utils.logger import configure_logger
 
 
 logger = logging.getLogger(__name__)
