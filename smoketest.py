@@ -73,6 +73,34 @@ def test_logout_user(logged_in_session):
     except Exception as e:
         pytest.fail(f"Error during logout: {e}")
 
+def test_change_password(logged_in_session):
+    """Test updating the password of a user."""
+    if not logged_in_session:
+        pytest.skip("Login failed, skipping password update test.")
+
+    change_password_url = f"{BASE_URL}/change-password"
+    new_password = "new_password_smoke"
+    data = {"new_password": new_password}
+
+    try:
+        response = logged_in_session.post(change_password_url, json=data)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == "Password changed"
+        # Attempt to log in with the new password to verify
+        username = "testuser_smoke"  # Assuming the created user
+        login_url = f"{BASE_URL}/login"
+        login_data = {"username": username, "password": new_password}
+        login_response = requests.post(login_url, json=login_data)
+        assert login_response.status_code == 200
+        assert login_response.json().get("status") == "success"
+        return username, new_password
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {change_password_url}")
+    except Exception as e:
+        pytest.fail(f"Error during password change: {e}")
+    return None, None
+
 def test_add_weather(logged_in_session):
     """Test adding weather data for a city."""
     if not logged_in_session:
