@@ -36,6 +36,43 @@ def test_create_user():
         pytest.fail(f"Error during user creation: {e}")
     return None, None
 
+def test_login_user(created_user):
+    """Test logging in an existing user."""
+    if not created_user:
+        pytest.skip("User creation failed, skipping login test.")
+
+    username, password = created_user
+    login_url = f"{BASE_URL}/login"
+    data = {"username": username, "password": password}
+
+    try:
+        response = requests.post(login_url, json=data)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == f"User '{username}' logged in"
+        return response.cookies  # Return cookies for authenticated requests
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {login_url}")
+    except Exception as e:
+        pytest.fail(f"Error during login: {e}")
+    return None
+
+def test_logout_user(logged_in_session):
+    """Test logging out the current user."""
+    if not logged_in_session:
+        pytest.skip("Login failed, skipping logout test.")
+
+    logout_url = f"{BASE_URL}/logout"
+    try:
+        response = logged_in_session.post(logout_url)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == "User logged out"
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {logout_url}")
+    except Exception as e:
+        pytest.fail(f"Error during logout: {e}")
+
 def test_add_weather(logged_in_session):
     """Test adding weather data for a city."""
     if not logged_in_session:
