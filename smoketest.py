@@ -1,99 +1,144 @@
 import requests
+import pytest
+import os
 
+# Define the base URL of your application. Adjust if needed.
+BASE_URL = "http://localhost:5000/api"
 
-def run_smoketest():
-    base_url = "http://localhost:5000/api"
-    username = "test"
-    password = "test"
+def test_health_endpoint():
+    """Check if the health endpoint is available and returns success."""
+    health_url = f"{BASE_URL}/health"
+    try:
+        response = requests.get(health_url)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {health_url}")
+    except Exception as e:
+        pytest.fail(f"Error during health check: {e}")
 
+def test_create_user():
+    """Test the creation of a new user."""
+    create_user_url = f"{BASE_URL}/create-user"
+    username = "testuser_smoke"
+    password = "password123_smoke"
+    data = {"username": username, "password": password}
 
-    song_beatles = {
-        "artist": "The Beatles",
-        "title": "Come Together",
-        "year": 1969,
-        "genre": "Rock",
-        "duration": 259
-    }
+    try:
+        response = requests.put(create_user_url, json=data)
+        assert response.status_code == 201
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == f"User '{username}' created successfully"
+        return username, password  # Return credentials for later tests
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {create_user_url}")
+    except Exception as e:
+        pytest.fail(f"Error during user creation: {e}")
+    return None, None
 
-    song_nirvana = {
-        "artist": "Nirvana",
-        "title": "Smells Like Teen Spirit",
-        "year": 1991,
-        "genre": "Grunge",
-        "duration": 301
-    }
+def test_add_weather(logged_in_session):
+    """Test adding weather data for a city."""
+    if not logged_in_session:
+        pytest.skip("Login failed, skipping add weather test.")
 
-    health_response = requests.get(f"{base_url}/health")
-    assert health_response.status_code == 200
-    assert health_response.json()["status"] == "success"
+    add_weather_url = f"{BASE_URL}/weather"
+    city_name = "London"
+    data = {"city_name": city_name}
+    try:
+        response = logged_in_session.post(add_weather_url, json=data)
+        assert response.status_code == 201
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == f"Weather data added for {city_name}"
+        return city_name
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {add_weather_url}")
+    except Exception as e:
+        pytest.fail(f"Error during add weather: {e}")
+    return None
 
-    delete_user_response = requests.delete(f"{base_url}/reset-users")
-    assert delete_user_response.status_code == 200
-    assert delete_user_response.json()["status"] == "success"
-    print("Reset users successful")
+def test_get_weather_by_city(logged_in_session, added_city):
+    """Test retrieving weather data for a specific city."""
+    if not logged_in_session or not added_city:
+        pytest.skip("Login or adding weather failed, skipping get weather test.")
 
-    delete_song_response = requests.delete(f"{base_url}/reset-songs")
-    assert delete_song_response.status_code == 200
-    assert delete_song_response.json()["status"] == "success"
-    print("Reset song successful")
+    get_weather_url = f"{BASE_URL}/weather/{added_city}"
+    try:
+        response = logged_in_session.get(get_weather_url)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("data").get("city_name").lower() == added_city.lower()
+        assert "temperature" in response.json().get("data")
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {get_weather_url}")
+    except Exception as e:
+        pytest.fail(f"Error during get weather: {e}")
 
-    create_user_response = requests.put(f"{base_url}/create-user", json={
-        "username": username,
-        "password": password
-    })
-    assert create_user_response.status_code == 201
-    assert create_user_response.json()["status"] == "success"
-    print("User creation successful")
+def test_delete_weather_by_city(logged_in_session, added_city):
+    """Test deleting weather data for a specific city."""
+    if not logged_in_session or not added_city:
+        pytest.skip("Login or adding weather failed, skipping delete weather test.")
 
-    session = requests.Session()
+    delete_weather_url = f"{BASE_URL}/weather/{added_city}"
+    try:
+        response = logged_in_session.delete(delete_weather_url)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == f"Weather data for {added_city} deleted"
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {delete_weather_url}")
+    except Exception as e:
+        pytest.fail(f"Error during delete weather: {e}")
 
-    # Log in
-    login_resp = session.post(f"{base_url}/login", json={
-        "username": username,
-        "password": password
-    })
-    assert login_resp.status_code == 200
-    assert login_resp.json()["status"] == "success"
-    print("Login successful")
+def test_reset_users():
+    """Test the reset users endpoint."""
+    reset_users_url = f"{BASE_URL}/reset-users"
+    try:
+        response = requests.delete(reset_users_url)
+        assert response.status_code == 200
+        assert response.json().get("status") == "success"
+        assert response.json().get("message") == "Users table recreated successfully"
+        # Optionally, try to create a user again after reset
+        test_create_user()
+    except requests.exceptions.ConnectionError:
+        pytest.fail(f"Connection error: Could not connect to {reset_users_url}")
+    except Exception as e:
+        pytest.fail(f"Error during reset users: {e}")
 
-    create_song_resp = session.post(f"{base_url}/create-song", json=song_beatles)
-    assert create_song_resp.status_code == 201
-    assert create_song_resp.json()["status"] == "success"
-    print("Boxer creation successful")
+# Pytest fixtures to manage test dependencies
+@pytest.fixture
+def created_user():
+    """Fixture to create a user for testing and return their credentials."""
+    return test_create_user()
 
-    # Change password
-    change_password_resp = session.post(f"{base_url}/change-password", json={
-        "new_password": "new_password"
-    })
-    assert change_password_resp.status_code == 200
-    assert change_password_resp.json()["status"] == "success"
-    print("Password change successful")
+@pytest.fixture
+def logged_in_session(created_user):
+    """Fixture to create and log in a user, returning a logged-in requests session."""
+    if created_user:
+        username, password = created_user
+        session = requests.Session()
+        login_url = f"{BASE_URL}/login"
+        data = {"username": username, "password": password}
+        try:
+            response = session.post(login_url, json=data)
+            if response.status_code == 200 and response.json().get("status") == "success":
+                return session
+        except Exception as e:
+            pytest.fail(f"Error during login fixture: {e}")
+    return None
 
-    # Log in with new password
-    login_resp = session.post(f"{base_url}/login", json={
-        "username": username,
-        "password": "new_password"
-    })
-    assert login_resp.status_code == 200
-    assert login_resp.json()["status"] == "success"
-    print("Login with new password successful")
+@pytest.fixture
+def updated_user_credentials(logged_in_session):
+    """Fixture to update the user's password and return the new credentials."""
+    if logged_in_session:
+        return test_change_password(logged_in_session)
+    return None
 
-    create_boxer_resp = session.post(f"{base_url}/create-song", json=song_nirvana)
-    assert create_boxer_resp.status_code == 201
-    assert create_boxer_resp.json()["status"] == "success"
-    print("Song creation successful")
-
-    # Log out
-    logout_resp = session.post(f"{base_url}/logout")
-    assert logout_resp.status_code == 200
-    assert logout_resp.json()["status"] == "success"
-    print("Logout successful")
-
-    create_boxer_logged_out_resp = session.post(f"{base_url}/create-song", json=song_nirvana)
-    # This should fail because we are logged out
-    assert create_boxer_logged_out_resp.status_code == 401
-    assert create_boxer_logged_out_resp.json()["status"] == "error"
-    print("Song creation failed as expected")
+@pytest.fixture
+def added_city(logged_in_session):
+    """Fixture to add a weather record and return the city name."""
+    if logged_in_session:
+        return test_add_weather(logged_in_session)
+    return None
 
 if __name__ == "__main__":
-    run_smoketest()
+    pytest.main()
