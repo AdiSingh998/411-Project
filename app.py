@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 from datetime import datetime
 from dotenv import load_dotenv
@@ -8,7 +9,7 @@ from flask_login import (
     login_required, current_user
 )
 
-from config import ProductionConfig
+from weather.config import ProductionConfig
 from weather.db import db
 from weather.models.user_model import Users
 from weather.models.weatherlocation_model import FavoriteLocation
