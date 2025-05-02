@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch
 from weather.models.user_model import Users
-from weather.models.weather_model import WeatherData
+from weather.models.weatherdata_model import WeatherData
 from weather.models.weatherlocation_model import FavoriteLocation
 from weather import db
 
@@ -74,4 +74,3 @@ def test_all_functions(mock_getweather, user_credentials):
     wd.clear_locations()
     assert not wd.get_all_locations()
 
-    # Delete user tested in fixture teardown
